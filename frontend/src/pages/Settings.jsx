@@ -34,43 +34,43 @@ export default function Settings() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen bg-[#f4f6f8]">
       <Header
-        title="System Administration & Audit Governance"
+        title="Settings & Audit Governance"
         subtitle="Multi-branch configuration, RBAC user permissions, and compliance audit trail"
       />
 
-      <div className="p-8 space-y-6 flex-1">
-        <div className="flex items-center gap-2">
+      <div className="p-3.5 sm:p-5 space-y-3 flex-1 max-w-full">
+        <div className="crm-card p-1.5 flex items-center gap-1.5 overflow-x-auto">
           <button
             onClick={() => setActiveTab("audit")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === "audit" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200"
+            className={`px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              activeTab === "audit" ? "bg-blue-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
             }`}
           >
-            System Audit Trail ({auditLogs.length})
+            Audit Trail ({auditLogs.length})
           </button>
           <button
             onClick={() => setActiveTab("branches")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === "branches" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200"
+            className={`px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              activeTab === "branches" ? "bg-blue-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
             }`}
           >
             Branches ({branches.length})
           </button>
           <button
             onClick={() => setActiveTab("users")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === "users" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200"
+            className={`px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              activeTab === "users" ? "bg-blue-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
             }`}
           >
-            Staff Directory & Roles ({users.length})
+            Users & Roles ({users.length})
           </button>
         </div>
 
         {/* Audit Logs Tab */}
         {activeTab === "audit" && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="crm-card overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span>Section 40 Compliance Audit Log</span>
               <span>Showing last 100 historical modifications</span>
@@ -126,7 +126,7 @@ export default function Settings() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-600">
-                  📍 {b.address}, {b.city}, {b.state} - {b.pincode}
+                  <span className="font-semibold text-slate-700">Address:</span> {b.address}, {b.city}, {b.state} - {b.pincode}
                 </p>
                 <p className="text-xs text-slate-500">Phone: {b.phone} • Email: {b.email}</p>
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-700">

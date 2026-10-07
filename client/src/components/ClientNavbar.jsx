@@ -30,12 +30,12 @@ export default function ClientNavbar() {
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <Link to="/dashboard" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white text-lg font-bold shadow-xs">
-                🌿
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-black shadow-xs tracking-wider">
+                VGT
               </div>
               <div>
-                <span className="text-base font-extrabold text-slate-900 tracking-tight">AURA LIFE</span>
-                <span className="hidden sm:inline-block ml-1 text-xs text-emerald-600 font-semibold">• Client Portal</span>
+                <span className="text-base font-extrabold text-slate-900 tracking-tight">VGT WELLNESS</span>
+                <span className="hidden sm:inline-block ml-1 text-xs text-blue-600 font-semibold">• Client Portal</span>
               </div>
             </Link>
           </div>

@@ -8,7 +8,7 @@ import { authenticate, authorize } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 router.get("/availability", authenticate, checkAvailability);
-router.get("/queue", authenticate, authorize("SUPER_ADMIN", "ADMIN", "MANAGER", "RECEPTIONIST", "PRACTITIONER", "NUTRITIONIST", "THERAPIST"), getQueue);
+router.get("/queue", authenticate, authorize("SUPER_ADMIN", "ADMIN", "CENTRE_ADMIN", "BRANCH_ADMIN", "MANAGER", "RECEPTIONIST", "PRACTITIONER", "NUTRITIONIST", "THERAPIST"), getQueue);
 
 router.get("/", authenticate, getAppointments);
 router.post("/", authenticate, createAppointment);

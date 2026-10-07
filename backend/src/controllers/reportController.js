@@ -1,28 +1,35 @@
 import pool from "../config/db.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const getReports = async (req, res, next) => {
   try {
-    const { type = "revenue", branchId, dateFrom, dateTo, exportCsv = false } = req.query;
+    const scope = getTenantScope(req);
+    const { type = "revenue", dateFrom, dateTo, exportCsv = false } = req.query;
 
     let data = [];
-    const params = [];
-    let branchClause = "";
-    if (branchId) {
-      params.push(branchId);
-      branchClause = `AND branch_id = $${params.length}`;
-    }
+
+    const getTenantClause = (alias) => {
+      let clause = "";
+      if (scope.organizationId) {
+        clause += ` AND ${alias}.organization_id = ${scope.organizationId}`;
+      }
+      if (scope.branchId) {
+        clause += ` AND ${alias}.branch_id = ${scope.branchId}`;
+      }
+      return clause;
+    };
 
     if (type === "revenue") {
       const q = `
         SELECT p.payment_date, p.payment_method, SUM(p.amount) as total_amount, COUNT(p.id) as payment_count
         FROM payments p
-        WHERE 1=1 ${branchClause}
+        WHERE 1=1 ${getTenantClause("p")}
         ${dateFrom ? `AND p.payment_date >= '${dateFrom}'` : ""}
         ${dateTo ? `AND p.payment_date <= '${dateTo}'` : ""}
         GROUP BY p.payment_date, p.payment_method
         ORDER BY p.payment_date DESC
       `;
-      data = (await pool.query(q, params)).rows;
+      data = (await pool.query(q)).rows;
     } else if (type === "appointments") {
       const q = `
         SELECT a.appointment_date, a.status, s.name as service_name,
@@ -33,12 +40,12 @@ export const getReports = async (req, res, next) => {
         JOIN services s ON a.service_id = s.id
         JOIN practitioners p ON a.practitioner_id = p.id
         JOIN clients c ON a.client_id = c.id
-        WHERE 1=1 ${branchClause}
+        WHERE 1=1 ${getTenantClause("a")}
         ${dateFrom ? `AND a.appointment_date >= '${dateFrom}'` : ""}
         ${dateTo ? `AND a.appointment_date <= '${dateTo}'` : ""}
         ORDER BY a.appointment_date DESC
       `;
-      data = (await pool.query(q, params)).rows;
+      data = (await pool.query(q)).rows;
     } else if (type === "goals") {
       const q = `
         SELECT g.goal_name, g.status, g.priority, g.start_date, g.target_date,
@@ -47,10 +54,10 @@ export const getReports = async (req, res, next) => {
         FROM wellness_goals g
         JOIN clients c ON g.client_id = c.id
         LEFT JOIN goal_targets gt ON gt.goal_id = g.id
-        WHERE 1=1 ${branchClause}
+        WHERE 1=1 ${getTenantClause("g")}
         ORDER BY g.created_at DESC
       `;
-      data = (await pool.query(q, params)).rows;
+      data = (await pool.query(q)).rows;
     } else if (type === "inventory") {
       const q = `
         SELECT p.name as product_name, p.sku, pc.name as category,
@@ -59,10 +66,10 @@ export const getReports = async (req, res, next) => {
         FROM inventory_stock s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN product_categories pc ON p.category_id = pc.id
-        WHERE 1=1 ${branchClause}
+        WHERE 1=1 ${getTenantClause("s")}
         ORDER BY s.quantity ASC
       `;
-      data = (await pool.query(q, params)).rows;
+      data = (await pool.query(q)).rows;
     } else if (type === "outstanding") {
       const q = `
         SELECT inv.invoice_number, inv.invoice_date, inv.total_amount, inv.paid_amount, inv.balance_amount, inv.status,
@@ -70,10 +77,10 @@ export const getReports = async (req, res, next) => {
         FROM invoices inv
         JOIN clients c ON inv.client_id = c.id
         WHERE inv.balance_amount > 0 AND inv.status NOT IN ('PAID', 'CANCELLED')
-        ${branchClause}
+        ${getTenantClause("inv")}
         ORDER BY inv.balance_amount DESC
       `;
-      data = (await pool.query(q, params)).rows;
+      data = (await pool.query(q)).rows;
     } else {
       // Default: recent orders
       const q = `
@@ -81,10 +88,10 @@ export const getReports = async (req, res, next) => {
                c.first_name || ' ' || c.last_name as client_name
         FROM orders o
         JOIN clients c ON o.client_id = c.id
-        WHERE 1=1 ${branchClause}
+        WHERE 1=1 ${getTenantClause("o")}
         ORDER BY o.created_at DESC
       `;
-      data = (await pool.query(q, params)).rows;
+      data = (await pool.query(q)).rows;
     }
 
     if (exportCsv === "true" || exportCsv === true) {

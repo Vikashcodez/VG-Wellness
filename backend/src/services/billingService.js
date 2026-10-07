@@ -2,7 +2,7 @@ import pool from "../config/db.js";
 import { logAudit } from "../middleware/auditLogger.js";
 
 export const billingService = {
-  async getInvoices({ clientId, branchId, status, dateFrom, dateTo }) {
+  async getInvoices({ clientId, branchId, organizationId, status, dateFrom, dateTo }) {
     let query = `
       SELECT inv.*,
              c.first_name as client_first_name, c.last_name as client_last_name, c.client_code, c.mobile as client_mobile,
@@ -15,6 +15,10 @@ export const billingService = {
     `;
     const params = [];
 
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND inv.organization_id = $${params.length}`;
+    }
     if (clientId) {
       params.push(clientId);
       query += ` AND inv.client_id = $${params.length}`;
@@ -84,7 +88,7 @@ export const billingService = {
     };
   },
 
-  async createInvoice({ clientId, branchId = 1, items, discount = 0, notes = "", userId = null }) {
+  async createInvoice({ clientId, branchId = 1, organizationId = 1, items, discount = 0, notes = "", userId = null }) {
     if (!items || items.length === 0) {
       throw new Error("Invoice must have at least one line item");
     }
@@ -113,11 +117,11 @@ export const billingService = {
 
       const invRes = await conn.query(
         `INSERT INTO invoices (
-          invoice_number, client_id, branch_id, invoice_date, due_date,
+          invoice_number, organization_id, client_id, branch_id, invoice_date, due_date,
           subtotal, discount, tax, total_amount, paid_amount, balance_amount, status, notes, created_by
-        ) VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE + INTERVAL '14 days', $4, $5, $6, $7, 0.00, $8, 'ISSUED', $9, $10)
+        ) VALUES ($1, $2, $3, $4, CURRENT_DATE, CURRENT_DATE + INTERVAL '14 days', $5, $6, $7, $8, 0.00, $9, 'ISSUED', $10, $11)
         RETURNING *`,
-        [invoiceNumber, clientId, branchId, subtotal, discount, totalTax, totalAmount, balanceAmount, notes, userId]
+        [invoiceNumber, organizationId, clientId, branchId, subtotal, discount, totalTax, totalAmount, balanceAmount, notes, userId]
       );
       const newInvoice = invRes.rows[0];
 
@@ -176,11 +180,11 @@ export const billingService = {
 
       const payRes = await conn.query(
         `INSERT INTO payments (
-          payment_number, client_id, branch_id, invoice_id, amount,
+          payment_number, organization_id, client_id, branch_id, invoice_id, amount,
           payment_method, transaction_reference, notes, received_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *`,
-        [paymentNumber, invoice.client_id, invoice.branch_id, invoiceId, payAmount, paymentMethod, transactionReference, notes, userId]
+        [paymentNumber, invoice.organization_id || 1, invoice.client_id, invoice.branch_id, invoiceId, payAmount, paymentMethod, transactionReference, notes, userId]
       );
       const newPayment = payRes.rows[0];
 

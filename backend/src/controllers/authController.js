@@ -58,12 +58,17 @@ export const registerClient = async (req, res, next) => {
 export const getMe = async (req, res, next) => {
   try {
     const userRes = await pool.query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.branch_id,
-              b.name as branch_name, r.name as role, c.id as client_id, c.client_code,
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.branch_id, u.organization_id,
+              u.permissions,
+              b.name as branch_name, b.organization_id as branch_org_id,
+              COALESCE(o.name, b_org.name, 'VGT Wellness Centre Management') as organization_name,
+              r.name as role, c.id as client_id, c.client_code,
               p.id as practitioner_id
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
        LEFT JOIN branches b ON u.branch_id = b.id
+       LEFT JOIN organizations o ON u.organization_id = o.id
+       LEFT JOIN organizations b_org ON b.organization_id = b_org.id
        LEFT JOIN clients c ON c.user_id = u.id
        LEFT JOIN practitioners p ON p.user_id = u.id
        WHERE u.id = $1`,
@@ -75,6 +80,7 @@ export const getMe = async (req, res, next) => {
     }
 
     const user = userRes.rows[0];
+    const finalOrgId = user.organization_id || user.branch_org_id || 1;
     res.json({
       success: true,
       data: {
@@ -84,6 +90,9 @@ export const getMe = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        permissions: user.permissions || [],
+        organizationId: finalOrgId,
+        organizationName: user.organization_name,
         branchId: user.branch_id,
         branchName: user.branch_name,
         clientId: user.client_id,

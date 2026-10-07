@@ -2,7 +2,7 @@ import pool from "../config/db.js";
 import { logAudit } from "../middleware/auditLogger.js";
 
 export const productService = {
-  async getAllProducts({ categoryId, brandId, search, activeOnly = true }) {
+  async getAllProducts({ organizationId, branchId, categoryId, brandId, search, activeOnly = true }) {
     let query = `
       SELECT p.*, pc.name as category_name, pb.name as brand_name,
              COALESCE(SUM(s.quantity), 0) as stock_quantity
@@ -16,6 +16,14 @@ export const productService = {
 
     if (activeOnly) {
       query += ` AND p.is_active = true`;
+    }
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND p.organization_id = $${params.length}`;
+    }
+    if (branchId) {
+      params.push(branchId);
+      query += ` AND (p.branch_id = $${params.length} OR p.branch_id IS NULL)`;
     }
     if (categoryId) {
       params.push(categoryId);

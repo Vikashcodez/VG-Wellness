@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import Header from "../components/Header.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { dashboardService } from "../services/dashboardService.js";
-import {
-  Calendar, IndianRupee, Users, Target, CheckCircle2,
-  AlertTriangle, ShoppingCart, Sparkles, Clock, ArrowRight,
-  TrendingUp, Activity
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 export default function Dashboard() {
+  const { user } = useAuth();
+
+  if (user?.role === "SUPER_ADMIN") {
+    return <Navigate to="/saas/centres" replace />;
+  }
+  if (user?.role === "CENTRE_ADMIN") {
+    return <Navigate to="/branches" replace />;
+  }
+
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,9 +36,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-8 flex items-center justify-center text-slate-500">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mr-3" />
-        <span>Loading operational metrics...</span>
+      <div className="flex-1 p-6 flex items-center justify-center text-slate-500">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+        <span className="text-xs font-semibold text-slate-600">Loading operational analytics...</span>
       </div>
     );
   }
@@ -40,213 +46,277 @@ export default function Dashboard() {
   const kpis = stats?.kpis || {};
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen bg-[#f4f6f8]">
       <Header
-        title="Centre Operations Dashboard"
-        subtitle="Live snapshot of appointments, clinical goals, revenue, and client journeys"
+        title="Operations Control Centre"
+        subtitle="Real-time KPI metrics, daily appointments queue, and revenue velocity"
+        actions={
+          <div className="flex items-center gap-1.5">
+            <Link to="/appointments" className="crm-btn-primary">
+              Schedule Visit
+            </Link>
+            <Link to="/billing" className="crm-btn-secondary">
+              Generate Invoice
+            </Link>
+          </div>
+        }
       />
 
-      <div className="p-8 space-y-8 flex-1">
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="p-3.5 sm:p-5 space-y-3.5 flex-1 max-w-full">
+        {/* LeadSquared CRM KPI Ribbon - High Density, No Cartoon Icons */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           {/* Today's Appointments */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today's Schedule</span>
-              <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
-                <Calendar className="w-5 h-5" />
-              </div>
+          <div className="crm-stat-tile border-l-[3px] border-l-blue-600">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Today's Schedule
             </div>
-            <div className="mt-4">
-              <div className="text-2xl font-bold text-slate-900">{kpis.todayAppointments}</div>
-              <p className="text-xs text-blue-600 font-medium mt-1">Confirmed & In-Session</p>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {kpis.todayAppointments || 0}
+              </span>
+              <span className="crm-badge-info">
+                Active Queue
+              </span>
             </div>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              Confirmed & in-session slots
+            </p>
           </div>
 
           {/* Today's Revenue */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today's Revenue</span>
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
-                <IndianRupee className="w-5 h-5" />
-              </div>
+          <div className="crm-stat-tile border-l-[3px] border-l-emerald-600">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Today's Collections
             </div>
-            <div className="mt-4">
-              <div className="text-2xl font-bold text-slate-900">₹{kpis.todayRevenue?.toLocaleString() || 0}</div>
-              <p className="text-xs text-emerald-600 font-medium mt-1">₹{kpis.monthlyRevenue?.toLocaleString() || 0} this month</p>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                ₹{kpis.todayRevenue?.toLocaleString() || 0}
+              </span>
+              <span className="crm-badge-success">
+                Paid
+              </span>
             </div>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              ₹{kpis.monthlyRevenue?.toLocaleString() || 0} this month
+            </p>
           </div>
 
           {/* Active Clients */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Clients</span>
-              <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600">
-                <Users className="w-5 h-5" />
-              </div>
+          <div className="crm-stat-tile border-l-[3px] border-l-indigo-600">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Active Clients
             </div>
-            <div className="mt-4">
-              <div className="text-2xl font-bold text-slate-900">{kpis.activeClients}</div>
-              <p className="text-xs text-purple-600 font-medium mt-1">+{kpis.newClientsThisMonth} new this month</p>
-            </div>
-          </div>
-
-          {/* Active Goals & Achieved */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Goal Engine</span>
-              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
-                <Target className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="text-2xl font-bold text-slate-900">{kpis.activeGoals} Active</div>
-              <p className="text-xs text-amber-600 font-medium mt-1">{kpis.achievedGoals} targets achieved</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Secondary KPI Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-900 text-white p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Active Plans</p>
-              <p className="text-lg font-bold">{kpis.activeWellnessPlans} Enrolled</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Low Stock SKUs</p>
-              <p className="text-lg font-bold">{kpis.lowStockCount} items</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400">
-              <ShoppingCart className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Pending Orders</p>
-              <p className="text-lg font-bold">{kpis.pendingOrders} Orders</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Outstanding Invoices</p>
-              <p className="text-lg font-bold">₹{kpis.outstandingPayments?.toLocaleString() || 0}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Two Columns: Revenue Trend & Upcoming Appointments */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Revenue Trend & Distribution */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Revenue Velocity (Recent 7 Days)</h3>
-                <p className="text-xs text-slate-500">Breakdown of daily collections across services, packages, and products</p>
-              </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                Live Data
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {kpis.activeClients || 0}
+              </span>
+              <span className="crm-badge-neutral">
+                +{kpis.newClientsThisMonth || 0} MTD
               </span>
             </div>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              Registered wellness accounts
+            </p>
+          </div>
 
-            {/* Visual Bar representation */}
-            <div className="space-y-4">
-              {stats?.revenueTrend?.length > 0 ? (
-                stats.revenueTrend.map((day, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs font-medium text-slate-600">
-                      <span>{day.date}</span>
-                      <span className="font-semibold text-slate-900">₹{parseFloat(day.revenue).toLocaleString()}</span>
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-emerald-500 to-teal-400 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, Math.max(15, (parseFloat(day.revenue) / (kpis.todayRevenue || 5000)) * 80))}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="py-8 text-center text-slate-400 text-sm">
-                  No payment collections recorded yet for this period.
+          {/* Goal Engine */}
+          <div className="crm-stat-tile border-l-[3px] border-l-amber-600">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Goal Tracking
+            </div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {kpis.activeGoals || 0}
+              </span>
+              <span className="crm-badge-warning">
+                {kpis.achievedGoals || 0} Done
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              Target health transformations
+            </p>
+          </div>
+        </div>
+
+        {/* Secondary Metric Bar - Compact LeadSquared White Strip */}
+        <div className="crm-card grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 p-2 sm:p-2.5">
+          <div className="px-3 py-1.5 sm:py-0">
+            <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">
+              Active Plans
+            </span>
+            <div className="text-sm font-bold text-slate-800">
+              {kpis.activeWellnessPlans || 0} Enrolled
+            </div>
+          </div>
+          <div className="px-3 py-1.5 sm:py-0">
+            <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">
+              Low Stock Alerts
+            </span>
+            <div className={`text-sm font-bold ${kpis.lowStockCount > 0 ? "text-rose-600" : "text-slate-800"}`}>
+              {kpis.lowStockCount || 0} SKUs Critical
+            </div>
+          </div>
+          <div className="px-3 py-1.5 sm:py-0">
+            <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">
+              Pending Orders
+            </span>
+            <div className="text-sm font-bold text-slate-800">
+              {kpis.pendingOrders || 0} Processing
+            </div>
+          </div>
+          <div className="px-3 py-1.5 sm:py-0">
+            <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">
+              Outstanding Due
+            </span>
+            <div className={`text-sm font-bold ${kpis.outstandingPayments > 0 ? "text-amber-700" : "text-slate-800"}`}>
+              ₹{kpis.outstandingPayments?.toLocaleString() || 0}
+            </div>
+          </div>
+        </div>
+
+        {/* LeadSquared 2-Column High Density Operations View */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+          {/* Revenue Velocity & Quick Actions */}
+          <div className="lg:col-span-2 crm-card p-3.5 sm:p-4 space-y-3.5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                <div>
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900">
+                    Revenue Velocity (Recent 7 Days)
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Daily collections from services, packages, and clinical retail
+                  </p>
                 </div>
-              )}
+                <span className="crm-badge-success">
+                  Real-Time
+                </span>
+              </div>
+
+              {/* High-density progress breakdown */}
+              <div className="mt-3 space-y-2">
+                {stats?.revenueTrend?.length > 0 ? (
+                  stats.revenueTrend.map((day, idx) => {
+                    const rev = parseFloat(day.revenue) || 0;
+                    const maxRev = Math.max(
+                      ...stats.revenueTrend.map((d) => parseFloat(d.revenue) || 0),
+                      5000
+                    );
+                    const pct = Math.min(100, Math.max(6, (rev / maxRev) * 100));
+                    return (
+                      <div key={idx} className="space-y-0.5">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-medium text-slate-600">{day.date}</span>
+                          <span className="font-bold text-slate-900">
+                            ₹{rev.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-6 text-center text-slate-400 text-xs">
+                    No financial transactions recorded in the recent cycle.
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="border-t border-slate-100 pt-5">
-              <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Quick Operational Short-Cuts</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Link to="/appointments" className="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-xs font-semibold text-slate-700 flex flex-col items-center gap-1.5 transition">
-                  <Calendar className="w-4 h-4 text-emerald-600" />
-                  <span>Book Visit</span>
+            {/* Compact Action Ribbon */}
+            <div className="pt-3 border-t border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                Direct Workflows
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Link
+                  to="/appointments"
+                  className="crm-btn-secondary text-center justify-center font-medium"
+                >
+                  Book Visit
                 </Link>
-                <Link to="/queue" className="p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 text-xs font-semibold text-slate-700 flex flex-col items-center gap-1.5 transition">
-                  <Activity className="w-4 h-4 text-blue-600" />
-                  <span>Reception Queue</span>
+                <Link
+                  to="/queue"
+                  className="crm-btn-secondary text-center justify-center font-medium"
+                >
+                  Reception Queue
                 </Link>
-                <Link to="/goals" className="p-3 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/40 text-xs font-semibold text-slate-700 flex flex-col items-center gap-1.5 transition">
-                  <Target className="w-4 h-4 text-amber-600" />
-                  <span>Goal Engine</span>
+                <Link
+                  to="/clients"
+                  className="crm-btn-secondary text-center justify-center font-medium"
+                >
+                  Client Directory
                 </Link>
-                <Link to="/billing" className="p-3 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/40 text-xs font-semibold text-slate-700 flex flex-col items-center gap-1.5 transition">
-                  <IndianRupee className="w-4 h-4 text-purple-600" />
-                  <span>New Invoice</span>
+                <Link
+                  to="/billing"
+                  className="crm-btn-secondary text-center justify-center font-medium"
+                >
+                  Billing Ledger
                 </Link>
               </div>
             </div>
           </div>
 
-          {/* Today's Appointments Queue Preview */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          {/* Today's Queue Compact Data List */}
+          <div className="crm-card p-3.5 sm:p-4 flex flex-col">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-2">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Today's Queue</h3>
-                <p className="text-xs text-slate-500">Upcoming sessions</p>
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900">
+                  Today's Queue
+                </h2>
+                <p className="text-[11px] text-slate-500">Scheduled clinical sessions</p>
               </div>
-              <Link to="/queue" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
-                Full Queue <ArrowRight className="w-3.5 h-3.5" />
+              <Link
+                to="/queue"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center"
+              >
+                Full Queue <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Link>
             </div>
 
-            <div className="flex-1 space-y-3 overflow-y-auto max-h-[420px]">
+            <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[380px]">
               {stats?.upcomingToday?.length > 0 ? (
                 stats.upcomingToday.map((appt) => (
-                  <div key={appt.id} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-900">{appt.start_time?.slice(0, 5)}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        appt.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" :
-                        appt.status === "CONFIRMED" ? "bg-blue-100 text-blue-800" :
-                        appt.status === "CHECKED_IN" ? "bg-amber-100 text-amber-800" :
-                        "bg-slate-200 text-slate-700"
-                      }`}>
+                  <div
+                    key={appt.id}
+                    className="p-2 rounded border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition"
+                  >
+                    <div className="flex items-center justify-between text-xs mb-0.5">
+                      <span className="font-bold text-slate-900">
+                        {appt.start_time?.slice(0, 5)}
+                      </span>
+                      <span
+                        className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
+                          appt.status === "COMPLETED"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : appt.status === "CONFIRMED"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : appt.status === "CHECKED_IN"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
+                        }`}
+                      >
                         {appt.status}
                       </span>
                     </div>
-                    <p className="text-xs font-semibold text-slate-800">{appt.client_first_name} {appt.client_last_name}</p>
-                    <p className="text-xs text-slate-500">{appt.service_name}</p>
-                    <p className="text-[11px] text-emerald-700 font-medium mt-1">
+                    <div className="text-xs font-semibold text-slate-800">
+                      {appt.client_first_name} {appt.client_last_name}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {appt.service_name}
+                    </div>
+                    <div className="text-[10px] font-medium text-blue-700 mt-0.5">
                       Dr. {appt.practitioner_first_name} {appt.practitioner_last_name}
-                    </p>
+                    </div>
                   </div>
                 ))
               ) : (
-                <div className="py-12 text-center text-slate-400 text-xs">
+                <div className="py-10 text-center text-slate-400 text-xs">
                   No further appointments scheduled for today.
                 </div>
               )}

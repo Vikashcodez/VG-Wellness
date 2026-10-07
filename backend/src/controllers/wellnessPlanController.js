@@ -1,8 +1,19 @@
 import pool from "../config/db.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const getWellnessPlans = async (req, res, next) => {
   try {
-    const plans = (await pool.query("SELECT * FROM wellness_plans WHERE is_active = true ORDER BY name ASC")).rows;
+    const scope = getTenantScope(req);
+    let query = "SELECT * FROM wellness_plans WHERE is_active = true";
+    const params = [];
+
+    if (scope.organizationId) {
+      params.push(scope.organizationId);
+      query += ` AND organization_id = $${params.length}`;
+    }
+
+    query += " ORDER BY name ASC";
+    const plans = (await pool.query(query, params)).rows;
     res.json({ success: true, data: plans });
   } catch (error) {
     next(error);
@@ -11,11 +22,16 @@ export const getWellnessPlans = async (req, res, next) => {
 
 export const getWellnessPlanById = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     const planId = parseInt(req.params.id);
     const planRes = await pool.query("SELECT * FROM wellness_plans WHERE id = $1", [planId]);
     if (planRes.rowCount === 0) return res.status(404).json({ success: false, message: "Plan not found" });
 
     const plan = planRes.rows[0];
+    if (!scope.isSuper && plan.organization_id && plan.organization_id !== scope.organizationId) {
+      return res.status(403).json({ success: false, message: "Access forbidden to this wellness plan" });
+    }
+
     const services = (await pool.query(
       `SELECT wps.*, s.name as service_name, s.duration_minutes
        FROM wellness_plan_services wps

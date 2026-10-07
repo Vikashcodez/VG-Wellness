@@ -1,6 +1,6 @@
-# Aura Life Wellness Centre Management System
+# Aura Life Wellness Centre & SaaS Platform Management System
 
-A production-grade, modular, scalable Full-Stack Wellness Centre and Hospital Management System featuring an Express.js + PostgreSQL backend API, a comprehensive Staff & Hospital Admin application, and a responsive mobile-first Client Portal.
+A production-grade, modular, scalable Multi-Tenant SaaS Full-Stack Wellness Centre and Hospital Management Platform featuring an Express.js + PostgreSQL backend API, a comprehensive Staff, Hospital & Super Admin application, and a responsive mobile-first Client Portal.
 
 ---
 
@@ -9,7 +9,7 @@ A production-grade, modular, scalable Full-Stack Wellness Centre and Hospital Ma
 ```text
 wellness-centre/
 │
-├── frontend/       → Hospital / Wellness Centre Staff & Admin application (React.js + Vite + Tailwind CSS)
+├── frontend/       → Hospital / Wellness Centre Staff & Super Admin SaaS application (React.js + Vite + Tailwind CSS)
 │                     Port: 5173
 │
 ├── client/         → Client Portal application (React.js + Vite + Tailwind CSS)
@@ -19,7 +19,7 @@ wellness-centre/
                       Port: 5000
 ```
 
-Both frontend applications communicate with the **same unified Express backend**, which enforces strict database integrity and Role-Based Access Control (RBAC).
+Both frontend applications communicate with the **same unified Express backend**, which enforces strict database integrity, Multi-Tenant isolation, and Role-Based Access Control (RBAC).
 
 ---
 
@@ -33,37 +33,37 @@ Both frontend applications communicate with the **same unified Express backend**
 - **Security:** JWT Authentication, bcrypt password hashing, Helmet, CORS
 - **Logging & Audits:** Morgan, custom central audit logger (`audit_logs` table)
 - **Error Handling:** Centralized error-handling middleware
+- **Document Rendering:** Clean HTML Printable Tax Invoice generator with `@media print` layout
 
-### Staff & Admin Application (`frontend/`)
+### Staff, Hospital & SaaS Admin Application (`frontend/`)
 - **Framework:** React.js + Vite
 - **Styling:** Tailwind CSS + custom design system
 - **Routing:** React Router v6
 - **HTTP Client:** Centralized Axios client (`frontend/src/services/api.js`)
 - **State Management:** React Context API (`AuthContext`)
-- **UI Components:** Reusable modals, status badges, analytics cards, tabular layouts, responsive sidebar
-
-### Client Portal (`client/`)
-- **Framework:** React.js + Vite
-- **Styling:** Tailwind CSS (Mobile-First responsive architecture)
-- **Routing:** React Router v6
-- **HTTP Client:** Centralized Axios client (`client/src/services/api.js`)
-- **State Management:** React Context API (`ClientAuthContext`, `CartContext`)
+- **Modules (19 Integrated Views):**
+  - **SaaS Multi-Tenants:** Provision Wellness Centres & Assign Centre Admins
+  - **Employees Master:** Complete Staff Directory with Payroll & Department tracking
+  - **Asset Management:** Physical equipment, valuation, and maintenance service records
+  - **Accounts & Finance:** P&L statements, operational expenses ledger, profit margins
+  - **Billing & Printable Invoices:** Unified invoices, partial payments, and A4 print/PDF modal
+  - **Clients, Queue, Appointments, Goals, Assessments, Inventory & Reports**
 
 ---
 
 ## 🔐 User Roles & Role-Based Access Control (RBAC)
 
-The system implements 10 distinct operational roles:
-1. `SUPER_ADMIN` — Universal administrative control across all organizations and branches.
-2. `ADMIN` — Centre administrator; manages branch operations, staff, products, and services.
-3. `MANAGER` — Operations management, inventory oversight, and staff scheduling.
-4. `RECEPTIONIST` — Front desk arrivals, walk-ins, calendar booking, check-in queue management.
-5. `PRACTITIONER` — Wellness doctors & physicians; conducts clinical assessments, assigns plans and goals.
-6. `NUTRITIONIST` — Diet and macronutrient planning, metabolic weight tracking, product prescriptions.
-7. `THERAPIST` — Yoga therapy, physiotherapy, and restorative bodywork sessions.
-8. `BILLING_STAFF` — Accounts, multi-item invoice generation, payment collections, and refunds.
-9. `INVENTORY_STAFF` — Batch-level inventory stock, purchase orders, adjustments, and expiry tracking.
-10. `CLIENT` — Centre clients accessing their personal wellness portal.
+The system implements strict role-based operational permissions:
+1. `SUPER_ADMIN` — Platform SaaS Owner; provisions Wellness Centres (Tenants), assigns Centre Admins, manages global branches and subscriptions.
+2. `CENTRE_ADMIN` / `ADMIN` — Wellness Centre Tenant Administrator; manages all branches, employees, services, products, inventory, assets, and finance for their organization.
+3. `BRANCH_ADMIN` / `MANAGER` — Branch Operations Administrator; oversees branch staff, appointments queue, physical assets, and inventory.
+4. `ACCOUNTANT` / `BILLING_STAFF` — Accounts & Billing Lead; records expenses, processes invoices, payments, refunds, and P&L financial reports.
+5. `INVENTORY_STAFF` — Store & Logistics Manager; monitors batch stock, expiry, and asset maintenance.
+6. `PRACTITIONER` / `DOCTOR` — Naturopaths & Physicians; records clinical biometric assessments, sets goals, and prescribes products.
+7. `NUTRITIONIST` & `THERAPIST` — Holistic diet, yoga, and Panchakarma treatment sessions.
+8. `RECEPTIONIST` — Front desk check-in queue, walk-ins, calendar booking, and quick billing.
+9. `EMPLOYEE` — General staff profile and duty logs.
+10. `CLIENT` — Client Portal self-service account.
 
 ---
 

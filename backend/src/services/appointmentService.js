@@ -71,12 +71,13 @@ export const appointmentService = {
 
       const insertRes = await clientConn.query(
         `INSERT INTO appointments (
-          appointment_number, client_id, branch_id, service_id, practitioner_id,
+          appointment_number, organization_id, client_id, branch_id, service_id, practitioner_id,
           appointment_date, start_time, end_time, status, booking_source, notes, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'BOOKED', $9, $10, $11)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'BOOKED', $10, $11, $12)
         RETURNING *`,
         [
           apptNum,
+          branchId ? (await clientConn.query("SELECT organization_id FROM branches WHERE id = $1", [branchId])).rows[0]?.organization_id || 1 : 1,
           clientId,
           branchId,
           serviceId,
@@ -208,22 +209,27 @@ export const appointmentService = {
     return updated;
   },
 
-  async getAppointments({ branchId, practitionerId, clientId, status, dateFrom, dateTo, search }) {
+  async getAppointments({ organizationId, branchId, practitionerId, clientId, status, dateFrom, dateTo, search }) {
     let query = `
       SELECT a.*,
              c.first_name as client_first_name, c.last_name as client_last_name, c.mobile as client_mobile, c.client_code,
              s.name as service_name, s.duration_minutes, s.price as service_price,
              p.first_name as practitioner_first_name, p.last_name as practitioner_last_name,
-             b.name as branch_name
+             b.name as branch_name, o.name as organization_name
       FROM appointments a
       JOIN clients c ON a.client_id = c.id
       JOIN services s ON a.service_id = s.id
       JOIN practitioners p ON a.practitioner_id = p.id
       LEFT JOIN branches b ON a.branch_id = b.id
+      LEFT JOIN organizations o ON a.organization_id = o.id
       WHERE 1=1
     `;
     const params = [];
 
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND a.organization_id = $${params.length}`;
+    }
     if (branchId) {
       params.push(branchId);
       query += ` AND a.branch_id = $${params.length}`;
@@ -259,30 +265,43 @@ export const appointmentService = {
     return res.rows;
   },
 
-  async getQueueAndCheckInList(branchId = 1) {
+  async getQueueAndCheckInList({ organizationId, branchId }) {
     const today = new Date().toISOString().split("T")[0];
-    const res = await pool.query(
-      `SELECT a.*,
-              c.first_name as client_first_name, c.last_name as client_last_name, c.mobile as client_mobile, c.client_code,
-              s.name as service_name, s.duration_minutes,
-              p.first_name as practitioner_first_name, p.last_name as practitioner_last_name
-       FROM appointments a
-       JOIN clients c ON a.client_id = c.id
-       JOIN services s ON a.service_id = s.id
-       JOIN practitioners p ON a.practitioner_id = p.id
-       WHERE a.branch_id = $1
-         AND a.appointment_date = $2
-         AND a.status IN ('BOOKED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS')
-       ORDER BY
-         CASE
-           WHEN a.status = 'IN_PROGRESS' THEN 1
-           WHEN a.status = 'CHECKED_IN' THEN 2
-           WHEN a.status = 'CONFIRMED' THEN 3
-           ELSE 4
-         END,
-         a.start_time ASC`,
-      [branchId, today]
-    );
+    let query = `
+      SELECT a.*,
+             c.first_name as client_first_name, c.last_name as client_last_name, c.mobile as client_mobile, c.client_code,
+             s.name as service_name, s.duration_minutes,
+             p.first_name as practitioner_first_name, p.last_name as practitioner_last_name
+      FROM appointments a
+      JOIN clients c ON a.client_id = c.id
+      JOIN services s ON a.service_id = s.id
+      JOIN practitioners p ON a.practitioner_id = p.id
+      WHERE a.appointment_date = $1
+        AND a.status IN ('BOOKED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS')
+    `;
+    const params = [today];
+
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND a.organization_id = $${params.length}`;
+    }
+    if (branchId) {
+      params.push(branchId);
+      query += ` AND a.branch_id = $${params.length}`;
+    }
+
+    query += `
+      ORDER BY
+        CASE
+          WHEN a.status = 'IN_PROGRESS' THEN 1
+          WHEN a.status = 'CHECKED_IN' THEN 2
+          WHEN a.status = 'CONFIRMED' THEN 3
+          ELSE 4
+        END,
+        a.start_time ASC
+    `;
+
+    const res = await pool.query(query, params);
     return res.rows;
   }
 };

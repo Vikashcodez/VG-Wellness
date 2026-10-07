@@ -1,8 +1,10 @@
 import pool from "../config/db.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const getPractitioners = async (req, res, next) => {
   try {
-    const { branchId, serviceId } = req.query;
+    const scope = getTenantScope(req);
+    const { serviceId } = req.query;
 
     let query = `
       SELECT p.*, b.name as branch_name,
@@ -17,8 +19,13 @@ export const getPractitioners = async (req, res, next) => {
     `;
     const params = [];
 
-    if (branchId) {
-      params.push(branchId);
+    if (scope.organizationId) {
+      params.push(scope.organizationId);
+      query += ` AND p.organization_id = $${params.length}`;
+    }
+
+    if (scope.branchId) {
+      params.push(scope.branchId);
       query += ` AND p.branch_id = $${params.length}`;
     }
 
@@ -37,6 +44,7 @@ export const getPractitioners = async (req, res, next) => {
 
 export const getPractitionerById = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     const practitionerId = parseInt(req.params.id);
     const pRes = await pool.query(
       `SELECT p.*, b.name as branch_name
@@ -48,6 +56,10 @@ export const getPractitionerById = async (req, res, next) => {
 
     if (pRes.rowCount === 0) {
       return res.status(404).json({ success: false, message: "Practitioner not found" });
+    }
+
+    if (!scope.isSuper && pRes.rows[0].organization_id && pRes.rows[0].organization_id !== scope.organizationId) {
+      return res.status(403).json({ success: false, message: "Access forbidden: Practitioner belongs to another wellness centre" });
     }
 
     const specs = (await pool.query("SELECT specialization FROM practitioner_specializations WHERE practitioner_id = $1", [practitionerId])).rows.map(r => r.specialization);

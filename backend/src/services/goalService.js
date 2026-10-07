@@ -15,17 +15,22 @@ export const goalService = {
     return { categories: cats, types };
   },
 
-  async getClientGoals(clientId) {
-    const goalsRes = await pool.query(
-      `SELECT g.*, gt.name as goal_type_name, gt.target_direction, gt.default_unit,
-              p.first_name as practitioner_first_name, p.last_name as practitioner_last_name
-       FROM wellness_goals g
-       LEFT JOIN goal_types gt ON g.goal_type_id = gt.id
-       LEFT JOIN practitioners p ON g.practitioner_id = p.id
-       WHERE g.client_id = $1
-       ORDER BY g.created_at DESC`,
-      [clientId]
-    );
+  async getClientGoals(clientId, organizationId = null) {
+    let query = `
+      SELECT g.*, gt.name as goal_type_name, gt.target_direction, gt.default_unit,
+             p.first_name as practitioner_first_name, p.last_name as practitioner_last_name
+      FROM wellness_goals g
+      LEFT JOIN goal_types gt ON g.goal_type_id = gt.id
+      LEFT JOIN practitioners p ON g.practitioner_id = p.id
+      WHERE g.client_id = $1
+    `;
+    const params = [clientId];
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND g.organization_id = $${params.length}`;
+    }
+    query += ` ORDER BY g.created_at DESC`;
+    const goalsRes = await pool.query(query, params);
 
     const fullGoals = [];
     for (const g of goalsRes.rows) {
@@ -120,6 +125,7 @@ export const goalService = {
 
   async createGoal({
     clientId,
+    organizationId = 1,
     practitionerId = null,
     branchId = 1,
     goalTypeId,
@@ -148,11 +154,12 @@ export const goalService = {
 
       const gRes = await conn.query(
         `INSERT INTO wellness_goals (
-          client_id, practitioner_id, branch_id, goal_type_id, goal_name,
+          organization_id, client_id, practitioner_id, branch_id, goal_type_id, goal_name,
           description, priority, start_date, target_date, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ACTIVE')
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ACTIVE')
         RETURNING *`,
         [
+          organizationId,
           clientId,
           practitionerId,
           branchId,

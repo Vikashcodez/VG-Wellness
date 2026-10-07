@@ -7,13 +7,16 @@ export const authService = {
   async login(email, password, ipAddress) {
     const res = await pool.query(
       `SELECT u.id, u.organization_id, u.branch_id, u.first_name, u.last_name, u.email,
-              u.password_hash, u.is_active, r.name as role, c.id as client_id, c.client_code,
-              p.id as practitioner_id, b.name as branch_name
+              u.password_hash, u.is_active, u.permissions, r.name as role, c.id as client_id, c.client_code,
+              p.id as practitioner_id, b.name as branch_name, b.organization_id as branch_org_id,
+              COALESCE(o.name, b_org.name, 'VGT Wellness Centre Management') as organization_name
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
        LEFT JOIN clients c ON c.user_id = u.id
        LEFT JOIN practitioners p ON p.user_id = u.id
        LEFT JOIN branches b ON u.branch_id = b.id
+       LEFT JOIN organizations o ON u.organization_id = o.id
+       LEFT JOIN organizations b_org ON b.organization_id = b_org.id
        WHERE LOWER(u.email) = LOWER($1)`,
       [email]
     );
@@ -50,6 +53,8 @@ export const authService = {
       ipAddress
     });
 
+    const finalOrgId = user.organization_id || user.branch_org_id || 1;
+
     return {
       token,
       user: {
@@ -58,6 +63,9 @@ export const authService = {
         lastName: user.last_name,
         email: user.email,
         role: user.role,
+        permissions: user.permissions || [],
+        organizationId: finalOrgId,
+        organizationName: user.organization_name,
         branchId: user.branch_id,
         branchName: user.branch_name,
         clientId: user.client_id,
@@ -86,12 +94,16 @@ export const authService = {
       const roleRes = await clientConn.query("SELECT id FROM roles WHERE name = 'CLIENT'");
       const roleId = roleRes.rows[0]?.id || 10;
 
+      // Resolve branch organization_id
+      const bRes = await clientConn.query("SELECT organization_id FROM branches WHERE id = $1", [branchId]);
+      const orgId = bRes.rows[0]?.organization_id || 1;
+
       // Create user
       const userRes = await clientConn.query(
-        `INSERT INTO users (branch_id, first_name, last_name, email, password_hash, phone, role_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO users (organization_id, branch_id, first_name, last_name, email, password_hash, phone, role_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
-        [branchId, firstName, lastName, email, passwordHash, mobile, roleId]
+        [orgId, branchId, firstName, lastName, email, passwordHash, mobile, roleId]
       );
       const userId = userRes.rows[0].id;
 
@@ -116,10 +128,10 @@ export const authService = {
 
       // Create client
       const clientRes = await clientConn.query(
-        `INSERT INTO clients (user_id, branch_id, client_code, first_name, last_name, date_of_birth, age, gender, mobile, email)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO clients (organization_id, user_id, branch_id, client_code, first_name, last_name, date_of_birth, age, gender, mobile, email)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id`,
-        [userId, branchId, clientCode, firstName, lastName, dateOfBirth || null, age, gender || "OTHER", mobile, email]
+        [orgId, userId, branchId, clientCode, firstName, lastName, dateOfBirth || null, age, gender || "OTHER", mobile, email]
       );
       const clientId = clientRes.rows[0].id;
 

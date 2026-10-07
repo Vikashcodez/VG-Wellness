@@ -1,8 +1,10 @@
 import { orderService } from "../services/orderService.js";
 import pool from "../config/db.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const checkout = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     const clientId = req.user.clientId || parseInt(req.body.clientId);
     const { shippingAddress, paymentMethod, branchId, notes } = req.body;
 
@@ -13,10 +15,14 @@ export const checkout = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Shipping address is required" });
     }
 
+    const targetBranchId = scope.branchId || (branchId ? parseInt(branchId) : 1);
+    const targetOrgId = scope.organizationId || 1;
+
     const result = await orderService.checkoutOrder(clientId, {
       shippingAddress,
       paymentMethod: paymentMethod || "UPI",
-      branchId: branchId || 1,
+      branchId: targetBranchId,
+      organizationId: targetOrgId,
       notes
     });
 
@@ -32,6 +38,7 @@ export const checkout = async (req, res, next) => {
 
 export const getOrders = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     let clientId = req.query.clientId;
     if (req.user.role === "CLIENT") {
       clientId = req.user.clientId;
@@ -39,7 +46,8 @@ export const getOrders = async (req, res, next) => {
 
     const orders = await orderService.getOrders({
       clientId: clientId ? parseInt(clientId) : null,
-      branchId: req.query.branchId ? parseInt(req.query.branchId) : null,
+      branchId: scope.branchId,
+      organizationId: scope.organizationId,
       status: req.query.status
     });
 
@@ -51,11 +59,15 @@ export const getOrders = async (req, res, next) => {
 
 export const getOrderById = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     const orderId = parseInt(req.params.id);
     const order = await orderService.getOrderById(orderId);
 
     if (req.user.role === "CLIENT" && order.client_id !== req.user.clientId) {
       return res.status(403).json({ success: false, message: "Access forbidden" });
+    }
+    if (!scope.isSuper && order.organization_id && order.organization_id !== scope.organizationId) {
+      return res.status(403).json({ success: false, message: "Access forbidden to this order" });
     }
 
     res.json({ success: true, data: order });

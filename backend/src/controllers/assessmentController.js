@@ -1,8 +1,10 @@
 import pool from "../config/db.js";
 import { logAudit } from "../middleware/auditLogger.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const getAssessments = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     let clientId = req.query.clientId;
     if (req.user.role === "CLIENT") {
       clientId = req.user.clientId;
@@ -12,14 +14,21 @@ export const getAssessments = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "clientId is required" });
     }
 
-    const assessments = (await pool.query(
-      `SELECT a.*, p.first_name as practitioner_first_name, p.last_name as practitioner_last_name
-       FROM wellness_assessments a
-       LEFT JOIN practitioners p ON a.practitioner_id = p.id
-       WHERE a.client_id = $1
-       ORDER BY a.assessment_date DESC, a.created_at DESC`,
-      [parseInt(clientId)]
-    )).rows;
+    let query = `
+      SELECT a.*, p.first_name as practitioner_first_name, p.last_name as practitioner_last_name
+      FROM wellness_assessments a
+      LEFT JOIN practitioners p ON a.practitioner_id = p.id
+      WHERE a.client_id = $1
+    `;
+    const params = [parseInt(clientId)];
+
+    if (scope.organizationId) {
+      params.push(scope.organizationId);
+      query += ` AND a.organization_id = $${params.length}`;
+    }
+
+    query += " ORDER BY a.assessment_date DESC, a.created_at DESC";
+    const assessments = (await pool.query(query, params)).rows;
 
     res.json({ success: true, data: assessments });
   } catch (error) {
@@ -29,6 +38,7 @@ export const getAssessments = async (req, res, next) => {
 
 export const createAssessment = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     const {
       clientId, branchId, appointmentId, assessmentDate,
       weight, height, bodyFatPct, muscleMassKg, waistCircumferenceCm,
@@ -39,6 +49,9 @@ export const createAssessment = async (req, res, next) => {
     if (!clientId) {
       return res.status(400).json({ success: false, message: "clientId is required" });
     }
+
+    const targetBranchId = scope.branchId || (branchId ? parseInt(branchId) : 1);
+    const targetOrgId = scope.organizationId || 1;
 
     // Auto-calculate BMI if weight and height are provided
     let calculatedBmi = null;
@@ -53,15 +66,16 @@ export const createAssessment = async (req, res, next) => {
 
       const insertRes = await conn.query(
         `INSERT INTO wellness_assessments (
-          client_id, branch_id, practitioner_id, appointment_id, assessment_date,
+          organization_id, client_id, branch_id, practitioner_id, appointment_id, assessment_date,
           weight, height, bmi, body_fat_pct, muscle_mass_kg, waist_circumference_cm,
           water_intake_l, sleep_hours, exercise_freq_weekly, stress_level,
           lifestyle_notes, nutrition_notes, clinical_notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         RETURNING *`,
         [
+          targetOrgId,
           clientId,
-          branchId || req.user.branchId || 1,
+          targetBranchId,
           req.user.practitionerId || null,
           appointmentId || null,
           assessmentDate || new Date().toISOString().split("T")[0],

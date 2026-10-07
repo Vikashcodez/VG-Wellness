@@ -71,7 +71,7 @@ export const orderService = {
     return await this.getCart(clientId);
   },
 
-  async checkoutOrder(clientId, { shippingAddress, paymentMethod = "UPI", branchId = 1, notes = "" }) {
+  async checkoutOrder(clientId, { shippingAddress, paymentMethod = "UPI", branchId = 1, notes = "", organizationId = null }) {
     const cart = await this.getCart(clientId);
     if (cart.items.length === 0) {
       throw new Error("Cannot checkout with an empty cart");
@@ -81,11 +81,16 @@ export const orderService = {
     try {
       await conn.query("BEGIN");
 
+      // Resolve client organization and branch if needed
+      const cRes = await conn.query("SELECT organization_id, branch_id FROM clients WHERE id = $1", [clientId]);
+      const orgId = organizationId || cRes.rows[0]?.organization_id || 1;
+      const finalBranchId = branchId || cRes.rows[0]?.branch_id || 1;
+
       // Verify stock availability
       for (const item of cart.items) {
         const stockRes = await conn.query(
           "SELECT COALESCE(SUM(quantity), 0) as total_qty FROM inventory_stock WHERE product_id = $1 AND branch_id = $2",
-          [item.product_id, branchId]
+          [item.product_id, finalBranchId]
         );
         const avail = parseInt(stockRes.rows[0].total_qty);
         if (avail < item.quantity) {
@@ -100,11 +105,11 @@ export const orderService = {
       // Insert Order
       const orderRes = await conn.query(
         `INSERT INTO orders (
-          order_number, client_id, branch_id, subtotal, tax_amount, discount_amount,
+          order_number, organization_id, client_id, branch_id, subtotal, tax_amount, discount_amount,
           total_amount, status, payment_status, shipping_address, notes
-        ) VALUES ($1, $2, $3, $4, $5, 0.00, $6, 'PAID', 'PAID', $7, $8)
+        ) VALUES ($1, $2, $3, $4, $5, $6, 0.00, $7, 'PAID', 'PAID', $8, $9)
         RETURNING *`,
-        [orderNumber, clientId, branchId, cart.subtotal, cart.tax, cart.total, shippingAddress, notes]
+        [orderNumber, orgId, clientId, finalBranchId, cart.subtotal, cart.tax, cart.total, shippingAddress, notes]
       );
       const newOrder = orderRes.rows[0];
 
@@ -121,7 +126,7 @@ export const orderService = {
         let qtyToDeduct = item.quantity;
         const stockBatches = (await conn.query(
           "SELECT id, quantity FROM inventory_stock WHERE product_id = $1 AND branch_id = $2 AND quantity > 0 ORDER BY expiry_date ASC NULLS LAST, id ASC",
-          [item.product_id, branchId]
+          [item.product_id, finalBranchId]
         )).rows;
 
         for (const batch of stockBatches) {
@@ -133,9 +138,9 @@ export const orderService = {
 
         // Record inventory transaction
         await conn.query(
-          `INSERT INTO inventory_transactions (branch_id, product_id, transaction_type, quantity, reference_id, reference_type, notes)
-           VALUES ($1, $2, 'SALE', $3, $4, 'ORDER', $5)`,
-          [branchId, item.product_id, -item.quantity, newOrder.id, `E-Commerce Order ${orderNumber}`]
+          `INSERT INTO inventory_transactions (organization_id, branch_id, product_id, transaction_type, quantity, reference_id, reference_type, notes)
+           VALUES ($1, $2, $3, 'SALE', $4, $5, 'ORDER', $6)`,
+          [orgId, finalBranchId, item.product_id, -item.quantity, newOrder.id, `E-Commerce Order ${orderNumber}`]
         );
 
         // Mark any product recommendation as PURCHASED
@@ -151,11 +156,11 @@ export const orderService = {
 
       const invRes = await conn.query(
         `INSERT INTO invoices (
-          invoice_number, client_id, branch_id, order_id, invoice_date, due_date,
+          invoice_number, organization_id, client_id, branch_id, order_id, invoice_date, due_date,
           subtotal, discount, tax, total_amount, paid_amount, balance_amount, status, notes
-        ) VALUES ($1, $2, $3, $4, CURRENT_DATE, CURRENT_DATE, $5, 0.00, $6, $7, $7, 0.00, 'PAID', $8)
+        ) VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, CURRENT_DATE, $6, 0.00, $7, $8, $8, 0.00, 'PAID', $9)
         RETURNING *`,
-        [invoiceNumber, clientId, branchId, newOrder.id, cart.subtotal, cart.tax, cart.total, `Auto-generated for Order ${orderNumber}`]
+        [invoiceNumber, orgId, clientId, finalBranchId, newOrder.id, cart.subtotal, cart.tax, cart.total, `Auto-generated for Order ${orderNumber}`]
       );
       const newInvoice = invRes.rows[0];
 
@@ -175,10 +180,10 @@ export const orderService = {
       const paymentNumber = `PAY-${new Date().getFullYear()}-${String(parseInt(payCount.rows[0].count) + 1).padStart(4, "0")}`;
 
       const payRes = await conn.query(
-        `INSERT INTO payments (payment_number, client_id, branch_id, invoice_id, amount, payment_method, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, 'Online store purchase payment')
+        `INSERT INTO payments (payment_number, organization_id, client_id, branch_id, invoice_id, amount, payment_method, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'Online store purchase payment')
          RETURNING id`,
-        [paymentNumber, clientId, branchId, newInvoice.id, cart.total, paymentMethod]
+        [paymentNumber, orgId, clientId, finalBranchId, newInvoice.id, cart.total, paymentMethod]
       );
 
       await conn.query(
@@ -229,7 +234,7 @@ export const orderService = {
     }
   },
 
-  async getOrders({ clientId, branchId, status }) {
+  async getOrders({ clientId, branchId, organizationId, status }) {
     let query = `
       SELECT o.*,
              c.first_name as client_first_name, c.last_name as client_last_name, c.mobile as client_mobile,
@@ -240,6 +245,10 @@ export const orderService = {
     `;
     const params = [];
 
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND o.organization_id = $${params.length}`;
+    }
     if (clientId) {
       params.push(clientId);
       query += ` AND o.client_id = $${params.length}`;

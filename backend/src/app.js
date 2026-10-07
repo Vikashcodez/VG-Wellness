@@ -23,13 +23,19 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import saasRoutes from "./routes/saasRoutes.js";
+import employeeRoutes from "./routes/employeeRoutes.js";
+import assetRoutes from "./routes/assetRoutes.js";
+import financeRoutes from "./routes/financeRoutes.js";
 
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
 // Security and utility middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false // Allow printable preview rendering
+}));
 app.use(cors({
   origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
   credentials: true
@@ -42,12 +48,16 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    service: "Wellness Centre Management System API"
+    service: "Wellness Centre Management System & SaaS Platform API"
   });
 });
 
 // Mount modular REST API routes
 app.use("/api/auth", authRoutes);
+app.use("/api/saas", saasRoutes);
+app.use("/api/employees", employeeRoutes);
+app.use("/api/assets", assetRoutes);
+app.use("/api/finance", financeRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/practitioners", practitionerRoutes);
 app.use("/api/services", serviceRoutes);

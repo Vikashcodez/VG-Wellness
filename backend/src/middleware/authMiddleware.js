@@ -25,9 +25,11 @@ export const authenticate = async (req, res, next) => {
     // Query user and their primary role
     const userRes = await pool.query(
       `SELECT u.id, u.organization_id, u.branch_id, u.first_name, u.last_name, u.email,
-              u.is_active, r.name as role_name, c.id as client_id, p.id as practitioner_id
+              u.is_active, u.permissions, r.name as role_name, c.id as client_id, p.id as practitioner_id,
+              b.organization_id as branch_org_id
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
+       LEFT JOIN branches b ON u.branch_id = b.id
        LEFT JOIN clients c ON c.user_id = u.id
        LEFT JOIN practitioners p ON p.user_id = u.id
        WHERE u.id = $1`,
@@ -49,14 +51,17 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
+    const finalOrgId = user.organization_id || user.branch_org_id || null;
+
     req.user = {
       id: user.id,
-      organizationId: user.organization_id,
+      organizationId: finalOrgId,
       branchId: user.branch_id,
       firstName: user.first_name,
       lastName: user.last_name,
       email: user.email,
       role: user.role_name,
+      permissions: user.permissions || [],
       clientId: user.client_id,
       practitionerId: user.practitioner_id
     };
@@ -77,18 +82,27 @@ export const authorize = (...allowedRoles) => {
       });
     }
 
-    // SUPER_ADMIN has access to everything
-    if (req.user.role === "SUPER_ADMIN") {
+    // Administrators have full access
+    if (["SUPER_ADMIN", "ADMIN", "CENTRE_ADMIN", "BRANCH_ADMIN"].includes(req.user.role)) {
       return next();
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Access denied. Requires one of roles: [${allowedRoles.join(", ")}]. Current role: ${req.user.role}`
-      });
+    if (allowedRoles.includes(req.user.role)) {
+      return next();
     }
 
-    next();
+    // Check if staff has custom tab permissions assigned
+    let perms = req.user.permissions;
+    if (typeof perms === "string") {
+      try { perms = JSON.parse(perms); } catch (e) { perms = []; }
+    }
+    if (Array.isArray(perms) && perms.length > 0) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: `Access denied. Requires one of roles: [${allowedRoles.join(", ")}]. Current role: ${req.user.role}`
+    });
   };
 };

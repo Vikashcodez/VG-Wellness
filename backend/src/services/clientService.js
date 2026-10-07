@@ -2,17 +2,23 @@ import pool from "../config/db.js";
 import { logAudit } from "../middleware/auditLogger.js";
 
 export const clientService = {
-  async getAllClients({ search = "", branchId = null, limit = 50, offset = 0 }) {
+  async getAllClients({ search = "", organizationId = null, branchId = null, limit = 50, offset = 0 }) {
     let query = `
-      SELECT c.*, b.name as branch_name,
+      SELECT c.*, b.name as branch_name, o.name as organization_name,
         (SELECT COUNT(*) FROM appointments a WHERE a.client_id = c.id) as total_appointments,
         (SELECT COUNT(*) FROM wellness_goals g WHERE g.client_id = c.id AND g.status = 'ACTIVE') as active_goals_count,
         (SELECT COALESCE(SUM(balance_amount), 0) FROM invoices inv WHERE inv.client_id = c.id AND inv.status != 'PAID' AND inv.status != 'CANCELLED') as outstanding_balance
       FROM clients c
       LEFT JOIN branches b ON c.branch_id = b.id
+      LEFT JOIN organizations o ON c.organization_id = o.id
       WHERE 1=1
     `;
     const params = [];
+
+    if (organizationId) {
+      params.push(organizationId);
+      query += ` AND c.organization_id = $${params.length}`;
+    }
 
     if (search) {
       params.push(`%${search}%`);
@@ -27,10 +33,21 @@ export const clientService = {
     query += ` ORDER BY c.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
 
-    const countRes = await pool.query(
-      `SELECT COUNT(*) FROM clients c WHERE 1=1 ${search ? "AND (c.first_name ILIKE $1 OR c.last_name ILIKE $1 OR c.client_code ILIKE $1 OR c.mobile ILIKE $1 OR c.email ILIKE $1)" : ""}`,
-      search ? [`%${search}%`] : []
-    );
+    let countQuery = "SELECT COUNT(*) FROM clients c WHERE 1=1";
+    const countParams = [];
+    if (organizationId) {
+      countParams.push(organizationId);
+      countQuery += ` AND c.organization_id = $${countParams.length}`;
+    }
+    if (branchId) {
+      countParams.push(branchId);
+      countQuery += ` AND c.branch_id = $${countParams.length}`;
+    }
+    if (search) {
+      countParams.push(`%${search}%`);
+      countQuery += ` AND (c.first_name ILIKE $${countParams.length} OR c.last_name ILIKE $${countParams.length} OR c.client_code ILIKE $${countParams.length} OR c.mobile ILIKE $${countParams.length} OR c.email ILIKE $${countParams.length})`;
+    }
+    const countRes = await pool.query(countQuery, countParams);
 
     const res = await pool.query(query, params);
     return {
@@ -241,11 +258,12 @@ export const clientService = {
 
       const cRes = await conn.query(
         `INSERT INTO clients (
-          branch_id, client_code, first_name, last_name, date_of_birth, age,
+          organization_id, branch_id, client_code, first_name, last_name, date_of_birth, age,
           gender, mobile, email, preferred_language, medical_notes, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *`,
         [
+          data.organizationId || 1,
           data.branchId || 1,
           clientCode,
           data.firstName,

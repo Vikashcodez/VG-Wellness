@@ -92,23 +92,23 @@ export default function Assessments() {
               setFormData(prev => ({ ...prev, clientId: selectedClientId }));
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-xs transition cursor-pointer"
+            className="crm-btn-primary"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Perform Diagnostic Scan</span>
           </button>
         }
       />
 
-      <div className="p-8 space-y-6 flex-1">
+      <div className="p-3.5 sm:p-5 space-y-3 flex-1 max-w-full">
         {/* Client selector filter */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-700">Select Patient / Client:</span>
+        <div className="crm-card p-2 sm:p-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-700">Patient / Client:</span>
             <select
               value={selectedClientId}
               onChange={(e) => handleClientChange(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="crm-input w-64"
             >
               {clients.map(c => (
                 <option key={c.id} value={c.id}>
@@ -117,27 +117,26 @@ export default function Assessments() {
               ))}
             </select>
           </div>
-          <div className="text-xs text-slate-500">
-            {assessments.length} assessment records logged historically
+          <div className="text-[11px] font-medium text-slate-500">
+            <span className="font-bold text-slate-900">{assessments.length}</span> historical assessments
           </div>
         </div>
 
         {/* Assessment Cards */}
         {loading ? (
-          <div className="py-16 text-center text-slate-500 text-sm">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2" />
+          <div className="py-12 text-center text-slate-500 text-xs">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
             Loading assessment logs...
           </div>
         ) : assessments.length === 0 ? (
-          <div className="bg-white p-16 rounded-2xl border border-slate-200 text-center text-slate-400 text-sm">
-            <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+          <div className="crm-card p-12 text-center text-slate-400 text-xs">
             No wellness assessments on record for this client.
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {assessments.map((a) => (
-              <div key={a.id} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div key={a.id} className="crm-card p-3.5 space-y-3 hover:border-slate-300 transition">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <div>
                     <span className="text-xs font-bold text-slate-900">
                       Assessment Record • {a.assessment_date}

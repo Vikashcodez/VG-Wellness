@@ -1,9 +1,11 @@
 import { appointmentService } from "../services/appointmentService.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 import pool from "../config/db.js";
 
 export const getAppointments = async (req, res, next) => {
   try {
-    const { branchId, practitionerId, clientId, status, dateFrom, dateTo, search } = req.query;
+    const { practitionerId, clientId, status, dateFrom, dateTo, search } = req.query;
+    const { organizationId, branchId } = getTenantScope(req);
 
     // If client is logged in, restrict to their appointments
     let filterClientId = clientId;
@@ -12,6 +14,7 @@ export const getAppointments = async (req, res, next) => {
     }
 
     const appointments = await appointmentService.getAppointments({
+      organizationId,
       branchId,
       practitionerId,
       clientId: filterClientId,
@@ -29,8 +32,8 @@ export const getAppointments = async (req, res, next) => {
 
 export const getQueue = async (req, res, next) => {
   try {
-    const branchId = req.query.branchId ? parseInt(req.query.branchId) : 1;
-    const queue = await appointmentService.getQueueAndCheckInList(branchId);
+    const { organizationId, branchId } = getTenantScope(req);
+    const queue = await appointmentService.getQueueAndCheckInList({ organizationId, branchId });
     res.json({ success: true, data: queue });
   } catch (error) {
     next(error);
@@ -81,9 +84,11 @@ export const createAppointment = async (req, res, next) => {
 
     const bookingSource = req.user.role === "CLIENT" ? "CLIENT_PORTAL" : (req.body.bookingSource || "RECEPTION");
 
+    const { organizationId, branchId: scopedBranchId } = getTenantScope(req);
     const appointment = await appointmentService.createAppointment({
       clientId,
-      branchId: branchId || 1,
+      organizationId,
+      branchId: branchId || scopedBranchId || 1,
       serviceId,
       practitionerId,
       appointmentDate,

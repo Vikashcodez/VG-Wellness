@@ -60,46 +60,45 @@ export default function WellnessPlans() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen bg-[#f4f6f8]">
       <Header
-        title="Multi-Disciplinary Wellness Plans"
+        title="Wellness Programs & Plans"
         subtitle="Holistic 4-12 week structured protocols integrating Nutrition, Yoga, Therapies, and Lifestyle Habits"
       />
 
-      <div className="p-8 space-y-6 flex-1">
+      <div className="p-3.5 sm:p-5 space-y-3.5 flex-1 max-w-full">
         {loading ? (
-          <div className="py-16 text-center text-slate-500 text-sm">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2" />
+          <div className="py-12 text-center text-slate-500 text-xs">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
             Loading wellness programs...
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {plans.map((plan) => (
-              <div key={plan.id} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition">
+              <div key={plan.id} className="crm-card p-3.5 flex flex-col justify-between space-y-3 hover:border-slate-300 transition">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                      {plan.duration_weeks} WEEKS DURATION
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="crm-badge-info text-[10px]">
+                      {plan.duration_weeks} Weeks Duration
                     </span>
-                    <span className="text-base font-extrabold text-slate-900">
+                    <span className="text-sm sm:text-base font-extrabold text-slate-900">
                       ₹{parseFloat(plan.price).toLocaleString()}
                     </span>
                   </div>
-                  <h3 className="font-bold text-base text-slate-900">{plan.name}</h3>
-                  <p className="text-xs text-slate-600 mt-2 leading-relaxed">{plan.description}</p>
+                  <h3 className="font-bold text-xs sm:text-sm text-slate-900">{plan.name}</h3>
+                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{plan.description}</p>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Multi-Modality
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-blue-700 font-semibold">
+                    Multi-Modality Protocol
                   </span>
                   <button
                     onClick={() => {
                       setSelectedPlan(plan);
                       setIsAssignModalOpen(true);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                    className="crm-btn-primary h-7 px-2.5 text-[11px]"
                   >
                     Enroll Client
                   </button>

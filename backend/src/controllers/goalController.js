@@ -1,4 +1,5 @@
 import { goalService } from "../services/goalService.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const getGoalMeta = async (req, res, next) => {
   try {
@@ -11,6 +12,7 @@ export const getGoalMeta = async (req, res, next) => {
 
 export const getGoals = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     let clientId = req.query.clientId;
     if (req.user.role === "CLIENT") {
       clientId = req.user.clientId;
@@ -20,7 +22,7 @@ export const getGoals = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "clientId is required" });
     }
 
-    const goals = await goalService.getClientGoals(parseInt(clientId));
+    const goals = await goalService.getClientGoals(parseInt(clientId), scope.organizationId);
     res.json({ success: true, data: goals });
   } catch (error) {
     next(error);
@@ -29,12 +31,16 @@ export const getGoals = async (req, res, next) => {
 
 export const getGoalById = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     const goalId = parseInt(req.params.id);
     const goal = await goalService.getGoalById(goalId);
 
     // If client, ensure ownership
     if (req.user.role === "CLIENT" && goal.client_id !== req.user.clientId) {
       return res.status(403).json({ success: false, message: "Access forbidden to this goal" });
+    }
+    if (!scope.isSuper && goal.organization_id && goal.organization_id !== scope.organizationId) {
+      return res.status(403).json({ success: false, message: "Access forbidden: Goal belongs to another wellness centre" });
     }
 
     res.json({ success: true, data: goal });
@@ -45,6 +51,7 @@ export const getGoalById = async (req, res, next) => {
 
 export const createGoal = async (req, res, next) => {
   try {
+    const scope = getTenantScope(req);
     let clientId = req.body.clientId;
     if (req.user.role === "CLIENT") {
       clientId = req.user.clientId;
@@ -62,10 +69,14 @@ export const createGoal = async (req, res, next) => {
       });
     }
 
+    const targetBranchId = scope.branchId || (req.body.branchId ? parseInt(req.body.branchId) : 1);
+    const targetOrgId = scope.organizationId || 1;
+
     const goal = await goalService.createGoal({
       clientId,
+      organizationId: targetOrgId,
       practitionerId: practitionerId || req.user.practitionerId || null,
-      branchId: req.body.branchId || req.user.branchId || 1,
+      branchId: targetBranchId,
       goalTypeId,
       goalName,
       description,

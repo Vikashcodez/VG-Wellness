@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header.jsx";
 import Modal from "../components/Modal.jsx";
 import { clientService } from "../services/clientService.js";
-import { Search, Plus, UserPlus, Phone, Mail, ChevronRight, Target, Calendar } from "lucide-react";
+import { Search, Plus, UserPlus, ChevronRight } from "lucide-react";
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
@@ -80,117 +80,123 @@ export default function Clients() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen bg-[#f4f6f8]">
       <Header
-        title="Client Management Directory"
-        subtitle={`Managing ${total} registered wellness clients and their historical journeys`}
+        title="Clients Directory"
+        subtitle={`Managing ${total} registered client profiles`}
         actions={
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-xs transition cursor-pointer"
+            className="crm-btn-primary"
           >
-            <Plus className="w-4 h-4" />
-            <span>Register New Client</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Client</span>
           </button>
         }
       />
 
-      <div className="p-8 space-y-6 flex-1">
-        {/* Search bar & filter controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="relative w-full sm:w-96">
-            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+      <div className="p-3.5 sm:p-5 space-y-3 flex-1 max-w-full">
+        {/* Search & Filter Toolbar */}
+        <div className="crm-card p-2 sm:p-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by client name, code, phone, or email..."
+              placeholder="Search name, phone, email, client ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="crm-input pl-8 w-full"
             />
           </div>
-          <div className="text-xs font-medium text-slate-500">
-            Showing <span className="font-bold text-slate-900">{clients.length}</span> of {total} clients
+          <div className="text-[11px] font-medium text-slate-500 self-end sm:self-center">
+            Showing <span className="font-bold text-slate-900">{clients.length}</span> of {total} records
           </div>
         </div>
 
-        {/* Client Table / Grid */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        {/* High Density LeadSquared Client Table */}
+        <div className="crm-card overflow-hidden">
           {loading ? (
-            <div className="py-16 text-center text-slate-500 text-sm">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2" />
+            <div className="py-12 text-center text-slate-500 text-xs">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
               Loading client records...
             </div>
           ) : clients.length === 0 ? (
-            <div className="py-16 text-center text-slate-500">
-              <UserPlus className="w-12 h-12 mx-auto text-slate-300 mb-2" />
-              <p className="font-semibold text-slate-700">No clients found</p>
-              <p className="text-xs text-slate-400 mt-1">Try another search or register a new client.</p>
+            <div className="py-12 text-center text-slate-500 text-xs">
+              <UserPlus className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+              <p className="font-bold text-slate-700">No client records found</p>
+              <p className="text-slate-400 mt-0.5">Try another search or register a new client profile.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="crm-table">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    <th className="py-3.5 px-6">Client Info</th>
-                    <th className="py-3.5 px-6">Contact</th>
-                    <th className="py-3.5 px-6">Demographics</th>
-                    <th className="py-3.5 px-6">Wellness Goals</th>
-                    <th className="py-3.5 px-6">Total Visits</th>
-                    <th className="py-3.5 px-6 text-right">Actions</th>
+                  <tr>
+                    <th>Client Profile</th>
+                    <th>Contact Details</th>
+                    <th>Demographics</th>
+                    <th>Wellness Goals</th>
+                    <th>Sessions</th>
+                    <th className="text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody>
                   {clients.map((client) => (
-                    <tr key={client.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">
+                    <tr key={client.id}>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs flex-shrink-0">
                             {client.first_name[0]}{client.last_name[0]}
                           </div>
-                          <div>
-                            <p className="font-bold text-slate-900">{client.first_name} {client.last_name}</p>
-                            <span className="inline-block font-mono text-[11px] text-emerald-700 font-medium">
+                          <div className="min-w-0">
+                            <Link
+                              to={`/clients/${client.id}`}
+                              className="font-bold text-slate-900 hover:text-blue-600 truncate block"
+                            >
+                              {client.first_name} {client.last_name}
+                            </Link>
+                            <span className="font-mono text-[10px] text-slate-500">
                               {client.client_code}
                             </span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-slate-600 text-xs space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          <Phone className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{client.mobile}</span>
+                      <td>
+                        <div className="space-y-0.5">
+                          <div className="font-medium text-slate-800">{client.mobile}</div>
+                          {client.email && (
+                            <div className="text-[11px] text-slate-500 truncate max-w-[150px]">
+                              {client.email}
+                            </div>
+                          )}
                         </div>
-                        {client.email && (
-                          <div className="flex items-center gap-1.5 text-slate-500">
-                            <Mail className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="truncate max-w-[160px]">{client.email}</span>
-                          </div>
-                        )}
                       </td>
-                      <td className="py-4 px-6 text-xs text-slate-600">
-                        <p>{client.gender || "Unspecified"} • {client.age ? `${client.age} yrs` : "N/A"}</p>
-                        <p className="text-slate-400 text-[11px]">{client.branch_name}</p>
+                      <td>
+                        <div className="space-y-0.5">
+                          <div>{client.gender || "—"} • {client.age ? `${client.age} yrs` : "—"}</div>
+                          <div className="text-[10px] text-slate-400">{client.branch_name}</div>
+                        </div>
                       </td>
-                      <td className="py-4 px-6 text-xs">
+                      <td>
                         {parseInt(client.active_goals_count) > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Target className="w-3 h-3" />
+                          <span className="crm-badge-success">
                             {client.active_goals_count} Active
                           </span>
                         ) : (
-                          <span className="text-slate-400 text-xs">No active goals</span>
+                          <span className="crm-badge-neutral">
+                            0 Goals
+                          </span>
                         )}
                       </td>
-                      <td className="py-4 px-6 text-xs text-slate-600">
-                        <span className="font-bold text-slate-900">{client.total_appointments}</span> sessions
+                      <td>
+                        <span className="font-bold text-slate-900">{client.total_appointments}</span> visits
                       </td>
-                      <td className="py-4 px-6 text-right">
+                      <td className="text-right">
                         <Link
                           to={`/clients/${client.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-xs font-semibold text-slate-700 hover:text-emerald-700 transition"
+                          className="crm-btn-secondary text-[11px] h-7 px-2"
                         >
-                          <span>Full Profile</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
+                          <span>Profile</span>
+                          <ChevronRight className="w-3 h-3 ml-0.5" />
                         </Link>
                       </td>
                     </tr>
@@ -209,12 +215,12 @@ export default function Clients() {
         title="Register New Wellness Client"
       >
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+          <div className="mb-3 p-2.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-xs">
             {error}
           </div>
         )}
-        <form onSubmit={handleCreateClient} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleCreateClient} className="space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
               <input
@@ -222,7 +228,7 @@ export default function Clients() {
                 required
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
                 placeholder="e.g. Rahul"
               />
             </div>
@@ -233,13 +239,13 @@ export default function Clients() {
                 required
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
                 placeholder="e.g. Sharma"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Mobile Number *</label>
               <input
@@ -247,7 +253,7 @@ export default function Clients() {
                 required
                 value={formData.mobile}
                 onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
                 placeholder="+91 98765 43210"
               />
             </div>
@@ -257,19 +263,19 @@ export default function Clients() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
                 placeholder="client@example.com"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Gender</label>
               <select
                 value={formData.gender}
                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
               >
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -282,19 +288,19 @@ export default function Clients() {
                 type="date"
                 value={formData.dateOfBirth}
                 onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Address</label>
               <input
                 type="text"
                 value={formData.addressLine1}
                 onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
                 placeholder="Street Address"
               />
             </div>
@@ -304,20 +310,20 @@ export default function Clients() {
                 type="text"
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
+          <div className="grid grid-cols-2 gap-2.5 border-t border-slate-100 pt-2.5">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Emergency Contact Name</label>
+              <label className="block font-semibold text-slate-700 mb-1">Emergency Contact</label>
               <input
                 type="text"
                 value={formData.emergencyContactName}
                 onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
-                placeholder="Spouse / Parent Name"
+                className="crm-input w-full"
+                placeholder="Name"
               />
             </div>
             <div>
@@ -326,7 +332,7 @@ export default function Clients() {
                 type="text"
                 value={formData.emergencyContactMobile}
                 onChange={(e) => setFormData({ ...formData, emergencyContactMobile: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="crm-input w-full"
                 placeholder="+91..."
               />
             </div>
@@ -338,23 +344,23 @@ export default function Clients() {
               rows={2}
               value={formData.medicalNotes}
               onChange={(e) => setFormData({ ...formData, medicalNotes: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+              className="bg-white border border-slate-300 rounded text-xs text-slate-800 px-3 py-1.5 w-full focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Allergies, chronic conditions, personal goals..."
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2.5 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-semibold cursor-pointer"
+              className="crm-btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+              className="crm-btn-primary"
             >
               {submitting ? "Registering..." : "Complete Registration"}
             </button>

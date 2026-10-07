@@ -1,58 +1,75 @@
 import pool from "../config/db.js";
 import { calculateGoalProgress } from "../utils/goalCalculator.js";
+import { getTenantScope } from "../utils/tenantIsolation.js";
 
 export const getAdminDashboard = async (req, res, next) => {
   try {
-    const branchId = req.query.branchId ? parseInt(req.query.branchId) : null;
-    const branchFilter = branchId ? "AND branch_id = " + branchId : "";
+    const scope = getTenantScope(req);
+
+    const buildClause = (tableAlias = "") => {
+      const prefix = tableAlias ? `${tableAlias}.` : "";
+      let clause = "";
+      if (scope.organizationId) {
+        clause += ` AND ${prefix}organization_id = ${scope.organizationId}`;
+      }
+      if (scope.branchId) {
+        clause += ` AND ${prefix}branch_id = ${scope.branchId}`;
+      }
+      return clause;
+    };
+
+    const filter = buildClause();
+    const filterA = buildClause("a");
 
     // Today's appointments
     const todayAppts = await pool.query(
-      `SELECT COUNT(*) FROM appointments WHERE appointment_date = CURRENT_DATE ${branchFilter}`
+      `SELECT COUNT(*) FROM appointments WHERE appointment_date = CURRENT_DATE ${filter}`
     );
 
     // Today's revenue
     const todayRev = await pool.query(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_date = CURRENT_DATE ${branchFilter}`
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_date = CURRENT_DATE ${filter}`
     );
 
     // Monthly revenue
     const monthRev = await pool.query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM payments
-       WHERE payment_date >= DATE_TRUNC('month', CURRENT_DATE) ${branchFilter}`
+       WHERE payment_date >= DATE_TRUNC('month', CURRENT_DATE) ${filter}`
     );
 
     // Clients count
-    const totalClients = await pool.query(`SELECT COUNT(*) FROM clients WHERE is_active = true ${branchFilter}`);
+    const totalClients = await pool.query(`SELECT COUNT(*) FROM clients WHERE is_active = true ${filter}`);
     const newClientsMonth = await pool.query(
-      `SELECT COUNT(*) FROM clients WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) ${branchFilter}`
+      `SELECT COUNT(*) FROM clients WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) ${filter}`
     );
 
     // Goals count
-    const activeGoals = await pool.query(`SELECT COUNT(*) FROM wellness_goals WHERE status = 'ACTIVE' ${branchFilter}`);
-    const achievedGoals = await pool.query(`SELECT COUNT(*) FROM wellness_goals WHERE status = 'ACHIEVED' ${branchFilter}`);
+    const activeGoals = await pool.query(`SELECT COUNT(*) FROM wellness_goals WHERE status = 'ACTIVE' ${filter}`);
+    const achievedGoals = await pool.query(`SELECT COUNT(*) FROM wellness_goals WHERE status = 'ACHIEVED' ${filter}`);
 
     // Plans & Packages
-    const activePlans = await pool.query("SELECT COUNT(*) FROM client_wellness_plans WHERE status = 'ACTIVE'");
+    const activePlans = await pool.query(
+      `SELECT COUNT(*) FROM client_wellness_plans cwp JOIN clients c ON cwp.client_id = c.id WHERE cwp.status = 'ACTIVE' ${buildClause("c")}`
+    );
 
     // Inventory & Orders
-    const lowStock = await pool.query(`SELECT COUNT(*) FROM inventory_stock WHERE quantity <= 10 ${branchFilter}`);
-    const pendingOrders = await pool.query(`SELECT COUNT(*) FROM orders WHERE status = 'PENDING' ${branchFilter}`);
+    const lowStock = await pool.query(`SELECT COUNT(*) FROM inventory_stock WHERE quantity <= 10 ${filter}`);
+    const pendingOrders = await pool.query(`SELECT COUNT(*) FROM orders WHERE status = 'PENDING' ${filter}`);
     const outstandingInvoices = await pool.query(
-      `SELECT COALESCE(SUM(balance_amount), 0) as total FROM invoices WHERE balance_amount > 0 AND status NOT IN ('PAID', 'CANCELLED') ${branchFilter}`
+      `SELECT COALESCE(SUM(balance_amount), 0) as total FROM invoices WHERE balance_amount > 0 AND status NOT IN ('PAID', 'CANCELLED') ${filter}`
     );
 
     // Chart: Daily revenue for last 7 days
     const revChart = await pool.query(
       `SELECT TO_CHAR(payment_date, 'YYYY-MM-DD') as date, COALESCE(SUM(amount), 0) as revenue
        FROM payments
-       WHERE payment_date >= CURRENT_DATE - INTERVAL '6 days' ${branchFilter}
+       WHERE payment_date >= CURRENT_DATE - INTERVAL '6 days' ${filter}
        GROUP BY payment_date ORDER BY payment_date ASC`
     );
 
     // Chart: Appointments by status
     const apptStatusChart = await pool.query(
-      `SELECT status, COUNT(*) as count FROM appointments WHERE 1=1 ${branchFilter} GROUP BY status`
+      `SELECT status, COUNT(*) as count FROM appointments WHERE 1=1 ${filter} GROUP BY status`
     );
 
     // Upcoming 5 appointments today
@@ -63,7 +80,7 @@ export const getAdminDashboard = async (req, res, next) => {
        JOIN clients c ON a.client_id = c.id
        JOIN services s ON a.service_id = s.id
        JOIN practitioners p ON a.practitioner_id = p.id
-       WHERE a.appointment_date = CURRENT_DATE ${branchFilter}
+       WHERE a.appointment_date = CURRENT_DATE ${filterA}
        ORDER BY a.start_time ASC LIMIT 5`
     );
 

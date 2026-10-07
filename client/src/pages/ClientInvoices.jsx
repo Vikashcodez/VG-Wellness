@@ -64,22 +64,31 @@ export default function ClientInvoices() {
                       <p className="text-slate-500">Date: {inv.invoice_date} • {inv.notes || "Wellness services"}</p>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Total</span>
-                        <span className="font-extrabold text-slate-900 text-sm">₹{parseFloat(inv.total_amount).toLocaleString()}</span>
-                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">Total</span>
+                          <span className="font-extrabold text-slate-900 text-sm">₹{parseFloat(inv.total_amount).toLocaleString()}</span>
+                        </div>
 
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Balance Due</span>
-                        <span className={`font-extrabold text-sm ${parseFloat(inv.balance_amount) > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                          ₹{parseFloat(inv.balance_amount).toLocaleString()}
-                        </span>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">Balance Due</span>
+                          <span className={`font-extrabold text-sm ${parseFloat(inv.balance_amount) > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                            ₹{parseFloat(inv.balance_amount).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <a
+                          href={`http://localhost:5000/api/billing/invoices/${inv.id}/print`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded-xl hover:bg-teal-100 flex items-center gap-1 transition-colors"
+                        >
+                          <span>🖨️</span> Print
+                        </a>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
             )}
           </div>
 
